@@ -193,3 +193,56 @@ exports.completeCollection = (req, res) => {
     }
   );
 };
+
+
+// =====================================
+// Update collection (ADMIN)
+// =====================================
+exports.updateCollection = (req, res) => {
+  const { id } = req.params;
+  const { status, bin_id, collector_id } = req.body;
+
+  if (!status && !bin_id && !collector_id) {
+    return res.status(400).json({
+      message: "At least one field (status, bin_id, collector_id) is required"
+    });
+  }
+
+  // Build dynamic update query
+  let updateFields = [];
+  let updateValues = [];
+
+  if (status) {
+    updateFields.push("status = ?");
+    updateValues.push(status);
+  }
+
+  if (bin_id) {
+    updateFields.push("bin_id = ?");
+    updateValues.push(bin_id);
+  }
+
+  if (collector_id) {
+    updateFields.push("collector_id = ?");
+    updateValues.push(collector_id);
+  }
+
+  updateValues.push(id);
+
+  db.query(
+    `UPDATE collections SET ${updateFields.join(", ")} WHERE id = ?`,
+    updateValues,
+    (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Collection not found" });
+      }
+
+      res.json({
+        message: "Collection updated successfully",
+        collection: { id, status, bin_id, collector_id }
+      });
+    }
+  );
+};

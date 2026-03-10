@@ -3,11 +3,19 @@ const router = express.Router();
 
 const { 
   getAllAlerts, 
-  getAlertsByBin 
+  getAlertsByBin,
+  createAlert,
+  getMyAlerts
 } = require("../controllers/alertController");
 
 const { verifyToken } = require("../middleware/authMiddleware");
 const { isAdmin } = require("../middleware/roleMiddleware");
+
+// User: create alert
+router.post("/", verifyToken, createAlert);
+
+// User: get own alerts
+router.get("/my", verifyToken, getMyAlerts);
 
 // Admin: all alerts
 router.get("/", verifyToken, isAdmin, getAllAlerts);

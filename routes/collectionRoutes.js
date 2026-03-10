@@ -5,7 +5,8 @@ const {
   assignBin,
   getAllCollections,
   getMyCollections,
-  completeCollection
+  completeCollection,
+  updateCollection
 } = require("../controllers/collectionController");
 
 const { verifyToken } = require("../middleware/authMiddleware");
@@ -21,6 +22,9 @@ router.post("/assign", verifyToken, isAdmin, assignBin);
 
 // View all collections
 router.get("/", verifyToken, isAdmin, getAllCollections);
+
+// Update collection (admin can edit status, reassign)
+router.put("/:id", verifyToken, isAdmin, updateCollection);
 
 
 /* ================================

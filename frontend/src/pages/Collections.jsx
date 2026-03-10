@@ -7,10 +7,17 @@ function Collections() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userRole, setUserRole] = useState("admin");
+  const [editingId, setEditingId] = useState(null);
+  const [editFormData, setEditFormData] = useState({ status: "" });
+  const [editMessage, setEditMessage] = useState("");
+  const [bins, setBins] = useState([]);
+  const [collectors, setCollectors] = useState([]);
 
   useEffect(() => {
     fetchCollections();
-    // Check user role from localStorage or auth context
+    if (userRole === "admin") {
+      fetchBinsAndCollectors();
+    }
     const role = localStorage.getItem("userRole") || "admin";
     setUserRole(role);
   }, []);
@@ -39,6 +46,19 @@ function Collections() {
     }
   };
 
+  const fetchBinsAndCollectors = async () => {
+    try {
+      const [binsRes, collectorsRes] = await Promise.all([
+        api.get("/bins"),
+        api.get("/users/collectors")
+      ]);
+      setBins(binsRes.data || []);
+      setCollectors(collectorsRes.data || []);
+    } catch (err) {
+      console.error("Failed to load bins/collectors", err);
+    }
+  };
+
   const completeCollection = async (id) => {
     try {
       await api.put(`/collections/complete/${id}`);
@@ -50,6 +70,34 @@ function Collections() {
     }
   };
 
+  const openEditModal = (collection) => {
+    setEditingId(collection.id);
+    setEditFormData({ status: collection.status });
+    setEditMessage("");
+  };
+
+  const closeEditModal = () => {
+    setEditingId(null);
+    setEditFormData({ status: "" });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/collections/${editingId}`, { status: editFormData.status });
+      setCollections(collections.map(c => 
+        c.id === editingId ? { ...c, status: editFormData.status } : c
+      ));
+      setEditMessage("✅ Collection updated successfully!");
+      setTimeout(() => {
+        closeEditModal();
+      }, 1500);
+    } catch (err) {
+      setEditMessage("❌ Failed to update collection");
+      console.error(err);
+    }
+  };
+
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
       case "pending":
@@ -58,6 +106,8 @@ function Collections() {
         return "✅";
       case "in-progress":
         return "🔄";
+      case "collected":
+        return "✔️";
       default:
         return "❓";
     }
@@ -137,8 +187,13 @@ function Collections() {
                 )}
                 {userRole === "admin" && (
                   <>
-                    <button className="btn-small btn-secondary">Edit</button>
-                    {collection.status?.toLowerCase() !== "completed" && (
+                    <button 
+                      className="btn-small btn-secondary"
+                      onClick={() => openEditModal(collection)}
+                    >
+                      Edit
+                    </button>
+                    {collection.status?.toLowerCase() !== "completed" && collection.status?.toLowerCase() !== "collected" && (
                       <button className="btn-small btn-primary">Reassign</button>
                     )}
                   </>
@@ -146,6 +201,45 @@ function Collections() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {editingId && (
+        <div className="modal-overlay" onClick={closeEditModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Edit Collection #{editingId}</h2>
+              <button className="modal-close" onClick={closeEditModal}>✕</button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="modal-form">
+              {editMessage && (
+                <div className={editMessage.includes("✅") ? "success-message" : "error-message"}>
+                  {editMessage}
+                </div>
+              )}
+
+              <div className="form-group">
+                <label>Status</label>
+                <select
+                  value={editFormData.status}
+                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                  required
+                >
+                  <option value="pending">Pending</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="collected">Collected</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              <div className="modal-buttons">
+                <button type="submit" className="btn btn-primary">Save Changes</button>
+                <button type="button" className="btn btn-secondary" onClick={closeEditModal}>Cancel</button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
